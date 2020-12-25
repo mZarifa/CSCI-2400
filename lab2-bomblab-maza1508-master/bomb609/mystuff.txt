@@ -1,0 +1,499 @@
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Phase 1: Answer: I was trying to give Tina Fey more material.
+
+Takes your standard input, stores it in %eax, and then compares it to the string at $0x80497c0. If they’re equal, you get to go to the next phase.
+int main(string input)
+{
+    if (input == bombsentence)
+    {
+        dont explode
+    }
+    else
+    {
+        strings_eq
+    }
+}
+
+gdb bomb
+gdb break phase_1
+gdb run
+enter: test string.
+run (gdb) disas
+Dump of assembler code for function phase_1:
+=> 0x0000555555555174 <+0>:     sub    $0x8,%rsp //building stack frame with 8 more bytes
+   0x0000555555555178 <+4>:     lea    0x15f1(%rip),%rsi        # 0x555555556770 //what is being loaded here?
+   0x000055555555517f <+11>:    callq  0x5555555555b4 <strings_not_equal>
+   0x0000555555555184 <+16>:    test   %eax,%eax
+   0x0000555555555186 <+18>:    jne    0x55555555518d <phase_1+25>
+   0x0000555555555188 <+20>:    add    $0x8,%rsp
+   0x000055555555518c <+24>:    retq   
+   0x000055555555518d <+25>:    callq  0x5555555557b9 <explode_bomb>
+   0x0000555555555192 <+30>:    jmp    0x555555555188 <phase_1+20>
+End of assembler dump.
+
+check rsi
+p/x $rsi = 0x555555556770
+x/s 0x5555555567700 = "I was trying to give Tina Fey more material."
+gdb breakpoint phase_1
+enter: I was trying to give Tina Fey more material.
+run ni 3
+then i r
+look for rax value.
+rax            0x0                 0 //this is 0, we're good to go!
+rbx            0x5555555565a0      93824992241056
+rcx            0x2c                44
+rdx            0x0                 0
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Phase 2: Answer: 1 2 4 8 16 32 
+
+
+gdb bomb
+gdb break phase_2
+gdb run ./answers.txt
+1 2 3 4 5 6
+(gdb) disas
+Dump of assembler code for function phase_2:
+=> 0x0000555555555194 <+0>:     push   %rbp
+   0x0000555555555195 <+1>:     push   %rbx
+   0x0000555555555196 <+2>:     sub    $0x28,%rsp
+   0x000055555555519a <+6>:     mov    %rsp,%rsi
+   0x000055555555519d <+9>:     callq  0x5555555557f5 <read_six_numbers>
+   
+   0x00005555555551a2 <+14>:    cmpl   $0x1,(%rsp) //getting compared to 1
+   
+   0x00005555555551a6 <+18>:    jne    0x5555555551b1 <phase_2+29>
+   0x00005555555551a8 <+20>:    mov    %rsp,%rbx
+   
+   0x00005555555551ab <+23>:    lea    0x14(%rbx),%rbp
+   
+   0x00005555555551af <+27>:    jmp    0x5555555551c1 <phase_2+45>
+   0x00005555555551b1 <+29>:    callq  0x5555555557b9 <explode_bomb>
+   0x00005555555551b6 <+34>:    jmp    0x5555555551a8 <phase_2+20>
+   
+   0x00005555555551b8 <+36>:    add    $0x4,%rbx //start of loop
+   0x00005555555551bc <+40>:    cmp    %rbp,%rbx
+   0x00005555555551bf <+43>:    je     0x5555555551d1 <phase_2+61>
+   0x00005555555551c1 <+45>:    mov    (%rbx),%eax
+   
+   0x00005555555551c3 <+47>:    add    %eax,%eax //doubling???
+   
+   0x00005555555551c5 <+49>:    cmp    %eax,0x4(%rbx) //end of loop
+   
+   0x00005555555551c8 <+52>:    je     0x5555555551b8 <phase_2+36>
+   0x00005555555551ca <+54>:    callq  0x5555555557b9 <explode_bomb>
+   0x00005555555551cf <+59>:    jmp    0x5555555551b8 <phase_2+36>
+   0x00005555555551d1 <+61>:    add    $0x28,%rsp
+   0x00005555555551d5 <+65>:    pop    %rbx
+   0x00005555555551d6 <+66>:    pop    %rbp
+   0x00005555555551d7 <+67>:    retq   
+   
+End of assembler dump.
+
+Function is looping over its input. 
+After %eax is compared to (%rbx, 4) at <+49>, %ebx gets incremented as long as it's less than 5.
+Input integers will probably be a pattern.
+By adding 0x4 to RBX, we’ve now got a pointer to the third number in the array...
+It moves forward by 1 in the array (call this value y), sets itself to the previous (call this value x), doubles the previous, then checks if x == y. If not, go boom.
+RBX is the next value, EAX is the 'current' value.
+
+CHECK LINE 47. Adding itself, then LOOPING.
+
+Use until to jump down to the comparison
+
+(gdb) until *0x00005555555551c5
+0x00005555555551c5 in phase_2 ()
+(gdb) i r
+rax            0x2                 2 //this is our number
+rbx            0x7fffffffd810      140737488345104
+rcx            0x0                 0
+rdx            0x7fffffffd824      140737488345124
+rsi            0x0                 0
+rdi            0x7fffffffd1a0      140737488343456
+rbp            0x7fffffffd824      0x7fffffffd824
+rsp            0x7fffffffd810      0x7fffffffd810
+r8             0xffffffff          4294967295
+r9             0x0                 0
+r10            0x7ffff7f61ac0      140737353489088
+r11            0x0                 0
+r12            0x555555554f10      93824992235280
+r13            0x7fffffffd940      140737488345408
+r14            0x0                 0
+r15            0x0                 0
+rip            0x5555555551c5      0x5555555551c5 <phase_2+49>
+eflags         0x202               [ IF ]
+cs             0x33                51
+ss             0x2b                43
+ds             0x0                 0
+es             0x0                 0
+fs             0x0                 0
+gs             0x0                 0
+
+quit program. Write it down. Input 1 2 3 4 5 6
+run (gdb) until *0x00005555555551c5 TWICE
+
+(gdb) i r
+rax            0x4                 4 //next number.
+rbx            0x7fffffffd814      140737488345108
+rcx            0x0                 0
+rdx            0x7fffffffd824      140737488345124
+rsi            0x0                 0
+rdi            0x7fffffffd1a0      140737488343456
+rbp            0x7fffffffd824      0x7fffffffd824
+rsp            0x7fffffffd810      0x7fffffffd810
+r8             0xffffffff          4294967295
+r9             0x0                 0
+r10            0x7ffff7f61ac0      140737353489088
+r11            0x0                 0
+r12            0x555555554f10      93824992235280
+r13            0x7fffffffd940      140737488345408
+r14            0x0                 0
+r15            0x0                 0
+rip            0x5555555551c5      0x5555555551c5 <phase_2+49>
+eflags         0x202               [ IF ]
+cs             0x33                51
+ss             0x2b                43
+ds             0x0                 0
+es             0x0                 0
+fs             0x0                 0
+gs             0x0                 0
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Phase 3: Answer: 2 66
+
+Notes from assembly:   
+callq  e60 <__isoc99_sscanf@plt> //scan input
+
+There are two values that are pushed onto the stack right before scanf is called.
+
+check mem address here: 
+0x00005555555551e6 <+14>:    lea    0x17d6(%rip),%rsi        # 0x5555555569c3
+x/s 0x5555555569c3
+returns "%d %d"
+two numbers.
+first compairson: 0x00005555555551f7 <+31>:    cmp    $0x1,%eax
+
+0x00005555555551dc <+4>:     lea    0x8(%rsp),%rcx
+   0x00005555555551e1 <+9>:     lea    0xc(%rsp),%rdx
+   0x00005555555551e6 <+14>:    lea    0x17d6(%rip),%rsi        # 0x5555555569c3
+   0x00005555555551ed <+21>:    mov    $0x0,%eax
+   0x00005555555551f2 <+26>:    callq  0x555555554e60 <__isoc99_sscanf@plt>
+   0x00005555555551f7 <+31>:    cmp    $0x1,%eax
+   0x00005555555551fa <+34>:    jle    0x555555555217 <phase_3+63>
+   0x00005555555551fc <+36>:    cmpl   $0x7,0xc(%rsp)
+=> 0x0000555555555201 <+41>:    ja     0x55555555524f <phase_3+119>
+
+so it can be a number 1 through 7. It's a jump table (switch statement)
+If we keep moving to line   
+   0x000055555555525b <+131>:   mov    $0x117,%eax
+=> 0x0000555555555260 <+136>:   cmp    %eax,0x8(%rsp)
+then we're fine. And we can read the value of RSP and EAX to show what we're supposed to be getting for those jump table values. 
+(gdb) i r
+rax            0x2be               702
+
+following up:
+
+1, 702
+2 66 SKIPS THE BOMB
+its 2 and 66
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Phase 4: Answer: 12 43
+
+Func4
+=> 0x0000555555555270 <+0>:     push   %rbx
+   0x0000555555555271 <+1>:     mov    %edx,%ebx
+   0x0000555555555273 <+3>:     sub    %esi,%ebx
+   0x0000555555555275 <+5>:     shr    %ebx
+   0x0000555555555277 <+7>:     add    %esi,%ebx
+   0x0000555555555279 <+9>:     cmp    %edi,%ebx
+   0x000055555555527b <+11>:    ja     0x555555555285 <func4+21>
+   0x000055555555527d <+13>:    cmp    %edi,%ebx
+   0x000055555555527f <+15>:    jb     0x555555555291 <func4+33>
+   0x0000555555555281 <+17>:    mov    %ebx,%eax
+   0x0000555555555283 <+19>:    pop    %rbx
+   0x0000555555555284 <+20>:    retq   
+   0x0000555555555285 <+21>:    lea    -0x1(%rbx),%edx
+   0x0000555555555288 <+24>:    callq  0x555555555270 <func4>
+   0x000055555555528d <+29>:    add    %eax,%ebx
+   0x000055555555528f <+31>:    jmp    0x555555555281 <func4+17>
+   0x0000555555555291 <+33>:    lea    0x1(%rbx),%esi
+   0x0000555555555294 <+36>:    callq  0x555555555270 <func4>
+   0x0000555555555299 <+41>:    add    %eax,%ebx
+   0x000055555555529b <+43>:    jmp    0x555555555281 <func4+17>
+   
+    
+000000000000129d <phase_4>:
+=> 0x000055555555529d <+0>:     sub    $0x18,%rsp
+   0x00005555555552a1 <+4>:     lea    0x8(%rsp),%rcx
+   0x00005555555552a6 <+9>:     lea    0xc(%rsp),%rdx
+   
+   0x00005555555552ab <+14>:    lea    0x1711(%rip),%rsi        # 0x5555555569c3
+   
+   0x00005555555552b2 <+21>:    mov    $0x0,%eax
+   0x00005555555552b7 <+26>:    callq  0x555555554e60 <__isoc99_sscanf@plt>
+   0x00005555555552bc <+31>:    cmp    $0x2,%eax //2 
+   0x00005555555552bf <+34>:    jne    0x5555555552c8 <phase_4+43>
+   0x00005555555552c1 <+36>:    cmpl   $0xe,0xc(%rsp) //0xe is 14
+   0x00005555555552c6 <+41>:    jbe    0x5555555552cd <phase_4+48> //if first input < 14, skip bomb
+   0x00005555555552c8 <+43>:    callq  0x5555555557b9 <explode_bomb>
+   
+   0x00005555555552cd <+48>:    mov    $0xe,%edx //edx is 14
+   0x00005555555552d2 <+53>:    mov    $0x0,%esi //%esi = 0
+   0x00005555555552d7 <+58>:    mov    0xc(%rsp),%edi //%edi = first input
+   
+   0x00005555555552db <+62>:    callq  0x555555555270 <func4>
+   0x00005555555552e0 <+67>:    cmp    $0x2b,%eax //%eax is from <func4>
+   0x00005555555552e3 <+70>:    jne    0x5555555552ec <phase_4+79>
+   0x00005555555552e5 <+72>:    cmpl   $0x2b,0x8(%rsp)
+   0x00005555555552ea <+77>:    je     0x5555555552f1 <phase_4+84>
+   0x00005555555552ec <+79>:    callq  0x5555555557b9 <explode_bomb>
+   0x00005555555552f1 <+84>:    add    $0x18,%rsp
+   0x00005555555552f5 <+88>:    retq   
+    
+$rsp+12 holds 1st number. $rsp+8 holds 2nd.
+gdb() x/s 0x5555555569c3 returns "%d %d" == our format
+
+Input must be between 2 and 14
+Brute force by checking
+Skip ahead to line: 0x00005555555552e0 <+67>:    cmp    $0x2b,%eax
+See if it skips to bomb on line 79. If it does, try again with a new number. 
+its 12
+
+so we put 12 and 13 now
+goes to line: 0x00005555555552e5 <+72>:    cmpl   $0x2b,0x8(%rsp)
+use p $eax to see if there's a value?
+ITS 43 BABY.
+WE'RE GOOD
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Phase 5: answer: mfcdhw
+Dump of assembler code for function phase_5:
+=> 0x00005555555552f6 <+0>:     push   %rbx
+   0x00005555555552f7 <+1>:     sub    $0x10,%rsp
+   0x00005555555552fb <+5>:     mov    %rdi,%rbx  //uses rdi and rbx
+   
+   0x00005555555552fe <+8>:     callq  0x555555555597 <string_length> 
+   
+   0x0000555555555303 <+13>:    cmp    $0x6,%eax //wants a string length of 6 HMMMM
+   0x0000555555555306 <+16>:    jne    0x55555555534d <phase_5+87>
+   
+   0x0000555555555308 <+18>:    mov    $0x0,%eax
+   0x000055555555530d <+23>:    lea    0x14dc(%rip),%rcx        # 0x5555555567f0 <array.3419>
+   0x0000555555555314 <+30>:    movzbl (%rbx,%rax,1),%edx
+   0x0000555555555318 <+34>:    and    $0xf,%edx
+   0x000055555555531b <+37>:    movzbl (%rcx,%rdx,1),%edx
+   0x000055555555531f <+41>:    mov    %dl,0x9(%rsp,%rax,1)
+   0x0000555555555323 <+45>:    add    $0x1,%rax
+   
+   0x0000555555555327 <+49>:    cmp    $0x6,%rax //loop that shit like 6 times
+   
+   0x000055555555532b <+53>:    jne    0x555555555314 <phase_5+30>
+   0x000055555555532d <+55>:    movb   $0x0,0xf(%rsp)
+   0x0000555555555332 <+60>:    lea    0x9(%rsp),%rdi
+   0x0000555555555337 <+65>:    lea    0x1488(%rip),%rsi        # 0x5555555567c6
+   0x000055555555533e <+72>:    callq  0x5555555555b4 <strings_not_equal>
+   0x0000555555555343 <+77>:    test   %eax,%eax
+   0x0000555555555345 <+79>:    jne    0x555555555354 <phase_5+94>
+   0x0000555555555347 <+81>:    add    $0x10,%rsp
+   0x000055555555534b <+85>:    pop    %rbx
+   0x000055555555534c <+86>:    retq   
+   0x000055555555534d <+87>:    callq  0x5555555557b9 <explode_bomb>
+   0x0000555555555352 <+92>:    jmp    0x555555555308 <phase_5+18>
+   0x0000555555555354 <+94>:    callq  0x5555555557b9 <explode_bomb>
+   0x0000555555555359 <+99>:    jmp    0x555555555347 <phase_5+81>
+   
+so at least, its gotta be 6. lets see what the two values are
+
+(gdb) x/s 0x5555555567f0
+0x5555555567f0 <array.3419>:    "maduiersnfotvbylSo you think you can stop the bomb with ctrl-c, do you?"
+(gdb) x/s 0x5555555567c6
+0x5555555567c6: "bruins"
+
+so...
+Map each char in the alphabet to their code. Then chose the ones that would spell out "bruins". Input "abcdef", "ghijkl",..
+so on to get the mappings from %rdi just before line 72.
+
+a = a
+b = d
+c = i
+d = u
+e = e
+f = r
+g = s
+h = n
+i = f
+j = o
+k = t
+l = v
+m = b
+n = y
+o = l
+p = m
+q = a
+r = d
+s = u
+t = i 
+u = e
+v = r
+w = s
+x = n
+y = f
+z = 0
+
+m = b
+f = r     v = r
+c = u    
+d = i
+h = n     x = n
+w = s     g = s
+bruins
+mfcdhw
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Phase 6: answer: 1 3 5 2 6 4
+Dump of assembler code for function phase_6:
+=> 0x000055555555535b <+0>:     push   %r14
+   0x000055555555535d <+2>:     push   %r13
+   0x000055555555535f <+4>:     push   %r12
+   0x0000555555555361 <+6>:     push   %rbp
+   0x0000555555555362 <+7>:     push   %rbx
+   0x0000555555555363 <+8>:     sub    $0x50,%rsp
+   0x0000555555555367 <+12>:    lea    0x30(%rsp),%r13
+   0x000055555555536c <+17>:    mov    %r13,%rsi
+   0x000055555555536f <+20>:    callq  0x5555555557f5 <read_six_numbers>
+   0x0000555555555374 <+25>:    mov    %r13,%r12
+   0x0000555555555377 <+28>:    mov    $0x0,%r14d
+   
+   0x000055555555537d <+34>:    jmp    0x5555555553a5 <phase_6+74> 
+   0x000055555555537f <+36>:    callq  0x5555555557b9 <explode_bomb>
+   0x0000555555555384 <+41>:    jmp    0x5555555553b4 <phase_6+89>
+   
+   0x0000555555555386 <+43>:    add    $0x1,%ebx
+   0x0000555555555389 <+46>:    cmp    $0x5,%ebx //loop executed 6 times (our counter)
+   
+   0x000055555555538c <+49>:    jg     0x5555555553a1 <phase_6+70>
+   
+   0x000055555555538e <+51>:    movslq %ebx,%rax
+   
+   0x0000555555555391 <+54>:    mov    0x30(%rsp,%rax,4),%eax
+   0x0000555555555395 <+58>:    cmp    %eax,0x0(%rbp)
+   0x0000555555555398 <+61>:    jne    0x555555555386 <phase_6+43> //go to loop
+   0x000055555555539a <+63>:    callq  0x5555555557b9 <explode_bomb>
+   0x000055555555539f <+68>:    jmp    0x555555555386 <phase_6+43> //go to loop
+   
+   0x00005555555553a1 <+70>:    add    $0x4,%r13
+   0x00005555555553a5 <+74>:    mov    %r13,%rbp
+   0x00005555555553a8 <+77>:    mov    0x0(%r13),%eax
+   0x00005555555553ac <+81>:    sub    $0x1,%eax
+   0x00005555555553af <+84>:    cmp    $0x5,%eax
+   
+   0x00005555555553b2 <+87>:    ja     0x55555555537f <phase_6+36> //jump above to bomb boom
+   
+   0x00005555555553b4 <+89>:    add    $0x1,%r14d
+   0x00005555555553b8 <+93>:    cmp    $0x6,%r14d
+   0x00005555555553bc <+97>:    je     0x5555555553c3 <phase_6+104>
+   0x00005555555553be <+99>:    mov    %r14d,%ebx
+   0x00005555555553c1 <+102>:   jmp    0x55555555538e <phase_6+51>
+   
+   0x00005555555553c3 <+104>:   lea    0x18(%r12),%rcx
+   0x00005555555553c8 <+109>:   mov    $0x7,%edx
+   0x00005555555553cd <+114>:   mov    %edx,%eax
+   0x00005555555553cf <+116>:   sub    (%r12),%eax
+   
+   0x00005555555553d3 <+120>:   mov    %eax,(%r12)
+   0x00005555555553d7 <+124>:   add    $0x4,%r12
+   0x00005555555553db <+128>:   cmp    %r12,%rcx
+   0x00005555555553de <+131>:   jne    0x5555555553cd <phase_6+114>
+   0x00005555555553e0 <+133>:   mov    $0x0,%esi
+   0x00005555555553e5 <+138>:   jmp    0x555555555400 <phase_6+165>
+   
+   0x00005555555553e7 <+140>:   mov    0x8(%rdx),%rdx
+   0x00005555555553eb <+144>:   add    $0x1,%eax
+   0x00005555555553ee <+147>:   cmp    %ecx,%eax
+   
+   0x00005555555553f0 <+149>:   jne    0x5555555553e7 <phase_6+140>
+   
+   0x00005555555553f2 <+151>:   mov    %rdx,(%rsp,%rsi,8)
+   0x00005555555553f6 <+155>:   add    $0x1,%rsi
+   0x00005555555553fa <+159>:   cmp    $0x6,%rsi //less than 6
+   
+   0x00005555555553fe <+163>:   je     0x555555555417 <phase_6+188>
+   0x0000555555555400 <+165>:   mov    0x30(%rsp,%rsi,4),%ecx
+   0x0000555555555404 <+169>:   mov    $0x1,%eax
+   0x0000555555555409 <+174>:   lea    0x203220(%rip),%rdx        # 0x555555758630 <node1>
+   0x0000555555555410 <+181>:   cmp    $0x1,%ecx
+   0x0000555555555413 <+184>:   jg     0x5555555553e7 <phase_6+140>
+   0x0000555555555415 <+186>:   jmp    0x5555555553f2 <phase_6+151>
+   0x0000555555555417 <+188>:   mov    (%rsp),%rbx
+   
+   0x000055555555541b <+192>:   mov    0x8(%rsp),%rax
+   0x0000555555555420 <+197>:   mov    %rax,0x8(%rbx)
+   0x0000555555555424 <+201>:   mov    0x10(%rsp),%rdx
+   0x0000555555555429 <+206>:   mov    %rdx,0x8(%rax)
+   0x000055555555542d <+210>:   mov    0x18(%rsp),%rax //lots of shifting by 8 bits, node continues?
+   0x0000555555555432 <+215>:   mov    %rax,0x8(%rdx)
+   0x0000555555555436 <+219>:   mov    0x20(%rsp),%rdx
+   0x000055555555543b <+224>:   mov    %rdx,0x8(%rax)
+   0x000055555555543f <+228>:   mov    0x28(%rsp),%rax
+   0x0000555555555444 <+233>:   mov    %rax,0x8(%rdx)
+   0x0000555555555448 <+237>:   movq   $0x0,0x8(%rax)
+   
+   0x0000555555555450 <+245>:   mov    $0x5,%ebp
+   0x0000555555555455 <+250>:   jmp    0x555555555460 <phase_6+261>
+   0x0000555555555457 <+252>:   mov    0x8(%rbx),%rbx
+   0x000055555555545b <+256>:   sub    $0x1,%ebp
+   0x000055555555545e <+259>:   je     0x555555555471 <phase_6+278>
+   
+   0x0000555555555460 <+261>:   mov    0x8(%rbx),%rax //moving by 8 again
+   0x0000555555555464 <+265>:   mov    (%rax),%eax //value in node
+   0x0000555555555466 <+267>:   cmp    %eax,(%rbx) //compare values
+   0x0000555555555468 <+269>:   jge    0x555555555457 <phase_6+252> // node x >= node x+1
+   0x000055555555546a <+271>:   callq  0x5555555557b9 <explode_bomb> //BOOM
+   
+   0x000055555555546f <+276>:   jmp    0x555555555457 <phase_6+252>
+   0x0000555555555471 <+278>:   add    $0x50,%rsp
+   0x0000555555555475 <+282>:   pop    %rbx
+   0x0000555555555476 <+283>:   pop    %rbp
+   0x0000555555555477 <+284>:   pop    %r12
+   0x0000555555555479 <+286>:   pop    %r13
+   0x000055555555547b <+288>:   pop    %r14
+   0x000055555555547d <+290>:   retq  
+
+NOTE: 4 registers pointing at the address in RSP: RSP, RBP, r13, 14
+six integers separated by spaces
+
+Function 1/2:
+    Begins: <+46> looped 6 times
+    check each integer, it should be less than or equal to 6
+    
+Function 3:
+    Begins: <+89>
+    Ends:   <+138>
+    Takes select nodes in a different order than what they were entered. 
+    NOTE: Order of numbers was reversed for some reason...
+    0x00005555555553c8 <+109>:   mov    $0x7,%edx (Subtract input from 7 begins here)
+    The formula altering the input is 7 - x where x is each number entered.
+    THATS WHY IT WAS REVERSED.
+    
+Function 4: 
+    Checks that nodes are sorted in descending order based on the value, not number stored within the node.
+
+things to note: 0x0000555555555409 <+174>:   lea    0x203220(%rip),%rdx        # 0x555555758630 <node1>
+Force the loop to run to get the value of rdx
+until *0x0000555555555409
+x/d $rdx
+ni 6
+x/d $rdx
+
+node 1 = 330
+node 2 = 510
+node 3 = 252
+node 4 = 554
+node 5 = 413
+node 6 = 838
+
+get the values of the nodes, set them up in descending order (cuz thats what the code did)
+6 4 2 5 1 3
+
+Then we use the 7-x input and rock and roll. 
+
+1 3 5 2 6 4

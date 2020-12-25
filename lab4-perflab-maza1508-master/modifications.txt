@@ -1,0 +1,142 @@
+Changelog
+---------------------------------------------------------------------------------------------------------------------------
+Changed data structures in cs1300bmp.h:
+    Sum: Changed 3D array to 2D array of structs of shorts(R, G, B)
+	int color[MAX_COLORS][MAX_DIM][MAX_DIM]; => pixel color[MAX_DIM][MAX_DIM];
+    
+Description: Reduces one (N) number of passes through the array to visit every value of every pixel
+---------------------------------------------------------------------------------------------------------------------------
+Changed data structures in cs1300bmp.cc:
+1.
+    Sum: Changed .cc file to match adjusted data structure.
+    /////
+    image -> color[COLOR_RED  ][row][col] = rarray[row * width + col]; for each color 
+    => 
+	image -> color[row][col].R = rarray[row * width + col]; for each color
+    /////
+    
+    Description: Replaces old array access to struct access since it now accesses a different variable in the struct instead of another layer of the array.
+    
+    Old code on line 1871
+
+2.
+    Sum: Removed references to 3rd array layer. Made them struct variable accesses
+    /////
+	rarray[row * width + col] = image -> color[COLOR_RED][row][col]; for each color 
+    =>
+	rarray[row * width + col] = image -> color[row][col].R; for each color
+    /////
+    
+    Old code on line 1908
+---------------------------------------------------------------------------------------------------------------------------
+Changed filters in FilterMain.cpp:
+
+Major changes:
+
+1.
+    Flipped for loop order
+    Original:
+    /////
+      for(int col = 1; col < (input -> width) - 1; col = col + 1) {
+        for(int row = 1; row < (input -> height) - 1 ; row = row + 1)
+    /////
+    Sum: col then row => row then col
+    Desc: Allows for use of cacheing of the array data for faster access
+    Line: 113/115
+    
+2. 
+    Split into two cases of divisor and no divisor, since not all have a divisor that is greater than 1.
+    
+3. 
+    Removed 'plane' in array access and plane loop, replaced with access to structs of RGB, now only row/col are the major for loops.
+    
+    /////
+        for (col = 1; col < (input->width) - 1; col = col + 1)
+        {
+            output->color[row][col].R = 0;
+            output->color[row][col].G = 0;
+            output->color[row][col].B = 0;
+    /////
+4.
+    Direct access to array data instead of function call with 'filter' and 'divisor'
+    /////
+        int *data = filter -> data;
+    /////
+    Line 117.
+    
+    /////
+        char divisor = filter -> getDivisor();
+    /////
+    Line 117.
+    
+    Adjusted code to comply with new access in lines 136 and 143 chunks.
+
+5.
+    Used conditional operator over standard if statement
+    /////
+        rval = (rval < 0) ? 0 : rval;
+        gval = (gval < 0) ? 0 : gval;
+        bval = (bval < 0) ? 0 : bval;
+    //////
+    
+6.
+    Created global variables rval, gval, bval to reduce access to arrays
+7.
+    Created mcol mrow to shorten code chunk. Made array accesses with the n*i + j formula to speed up data access using memory locations
+    /////
+        rval += input->color[mrow + i][mcol + j].R * data[i * 3 + j];
+    /////
+    
+Minor changes:
+1. 
+    Added #include "immintrin.h" to allow AVX2 register use
+        Modded on line 7.
+    
+2. 
+    Moved all variable initialization outside loops.
+    
+3. 
+    Moved constant values outside loops.
+---------------------------------------------------------------------------------------------------------------------------
+Changed Filter.h file:
+1.
+    Made pointer data a public variable.
+    int *data;
+    
+---------------------------------------------------------------------------------------------------------------------------
+  
+Estimate the number of function calls/pixel.
+
+
+
+Explain the benefits of inline functions.
+
+Explain why the choice of data type is important.
+
+How do loop unrolling/reordering make execution faster?
+
+What impact does compiler optimization have?
+
+Extra Credit: Explain your steps to parallelize the code and why is that faster?
+
+
+
+jovyan@jupyter-maza1508:~/lab4-perflab-maza1508/performancelab$ make
+g++ -g -march=native -Ofast -funroll-loops -mavx2 -fno-omit-frame-pointer -Wall -fopenmp -o filter FilterMain.cpp Filter.cpp cs1300bmp.cc
+./Judge -p ./filter -i boats.bmp
+gauss: 36.448966..51.265484..29.956841..30.648936..30.487393..33.075452..
+avg: 165.766052..31.079844..31.138658..305.730919..113.106837..1115.114030..
+hline: 130.188820..24.903044..25.785587..24.936681..312.913379..25.076153..
+emboss: 192.478515..23.309135..24.170175..25.367381..80.882070..26.428561..
+Scores are 23 24 24 24 25 25 25 26 29 30 30 31 31 33 36 51 80 113 130 165 192 305 312 1115 
+median CPE for  is 31
+Resulting score for  is 108
+./Judge -p ./filter -i blocks-small.bmp
+gauss: 67.256371..23.483262..24.158487..41.215803..23.506184..23.285679..
+avg: 107.074815..73.895647..24.839963..39.822767..31.077415..23.561083..
+hline: 16.336564..16.113609..15.693467..16.031142..17.267239..15.761584..
+emboss: 126.970469..15.650677..16.071879..15.868889..15.613242..15.650697..
+Scores are 15 15 15 15 15 15 16 16 16 16 17 23 23 23 23 24 24 31 39 41 67 73 107 126 
+median CPE for  is 23
+Resulting score for  is 104
+Done

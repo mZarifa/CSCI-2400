@@ -1,0 +1,17 @@
+1. void eval (char*cmdline)
+    If command is a built-in command, the shell program handles it immediately.
+    Otherwise, the shell creates a child process to load and execute the program for command.
+    
+    -In eval, the parent must use sigprocmask to block SIGCHLD signals before it forks the child, then unblock these signals, again using sigprocmask after it adds the child to the job list by
+    calling addjob.
+    -Since children inherit the blocked vectors of their parents, the child must be sure to then unblock SIGCHLD signals before it execs the new program.
+    -The parent needs to block the SIGCHLD signals in this way in order to avoid the race condition where the child is reaped by sigchld_handler (and thus removed from the job list) before the
+    parent calls addjob.
+    -After the fork, but before the execve, the child process should call setpgid(0, 0), which puts the child in a new process group whose group ID is identical to the child’s PID. This ensures
+    that there will be only one process, your shell, in the foreground process group. When you type ctrl-c, the shell should catch the resulting SIGINT and then forward it to the appropriate
+    foreground job (or more precisely, the process group that contains the foreground job).
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+2. int builtin_cmd(char **argv)
+    Four commands are to be built-in in the shell
+    quit: exit the shell.
+    jobs: List the running and stopped background jobs.

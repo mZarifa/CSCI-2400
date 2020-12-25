@@ -1,0 +1,94 @@
+1. void eval (char*cmdline)
+    If command is a built-in command, the shell program handles it immediately.
+    Otherwise, the shell creates a child process to load and execute the program for command.
+    
+    -In eval, the parent must use sigprocmask to block SIGCHLD signals before it forks the child, then unblock these signals, again using sigprocmask after it adds the child to the job list by
+    calling addjob.
+    -Since children inherit the blocked vectors of their parents, the child must be sure to then unblock SIGCHLD signals before it execs the new program.
+    -The parent needs to block the SIGCHLD signals in this way in order to avoid the race condition where the child is reaped by sigchld_handler (and thus removed from the job list) before the
+    parent calls addjob.
+    -After the fork, but before the execve, the child process should call setpgid(0, 0), which puts the child in a new process group whose group ID is identical to the child’s PID. This ensures
+    that there will be only one process, your shell, in the foreground process group. When you type ctrl-c, the shell should catch the resulting SIGINT and then forward it to the appropriate
+    foreground job (or more precisely, the process group that contains the foreground job).
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+2. int builtin_cmd(char **argv)
+    Four commands are to be built-in in the shell
+    quit: exit the shell.
+    jobs: List the running and stopped background jobs.
+    strcmp: compares the string pointed to, by str1 to the string pointed to by str2.
+    
+   If the user has typed a built-in command then execute it immediately. 
+   The command name would be in argv[0] and is a C string. We've cast this to a C++ string type to simplify string comparisons; however, the do_bgfg routine will need to use the argv array as well to look for a job number.
+    
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------   
+3. void waitfg(pid_t pid)
+    shell should wait for foreground process
+    This function should wait by sleeping for 1 second repeatedly until the specified process is no longer the foreground process (state = FG)
+
+    In waitfg, use a busy loop around the sleep function.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------   
+4.  void do_bgfg(char **argv)
+    
+    bg <job>: Change a stopped background job to a running background job.
+    fg <job>: Change a stopped or running background job to a running in the foreground.
+    The bg <job> command restarts \ by sending it a SIGCONTsignal, and then runs it in the background. The \ argument can be either a PID or a JID.
+    The fg <job>command restarts \ by sending it a SIGCONTsignal, and then runs it in the foreground. The \ argument can be either a PID or a JID.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------   
+5. void sigchld_handler(int sig)
+
+    This is the shell’s handler for theSIGCHLD signal.
+
+    In sigchld_handler, use exactly one call to waitp
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------   
+6. void sigint_handler (int sig)
+    When implementing the signal handlers, send SIGINT and SIGTSTP signals to the entire foreground process group, using -pid instead of pid in the argument to the kill function.
+    The sdriver.pl program tests for this error.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------   
+7. void sigtstp_handler (int sig)
+    Same as above
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------   
+jovyan@jupyter-maza1508:~/Lab5-shelllab-maza1508/shelllab$ make
+g++ -Wall -O0 -g   -c -o tsh.o tsh.cc
+g++ -Wall -O0 -g   -c -o jobs.o jobs.cc
+g++ -Wall -O0 -g   -c -o helper-routines.o helper-routines.cc
+g++ -o tsh tsh.o jobs.o helper-routines.o
+g++ -Wall -O0 -g    myspin.cc   -o myspin
+g++ -Wall -O0 -g    mysplit.cc   -o mysplit
+g++ -Wall -O0 -g    mystop.cc   -o mystop
+g++ -Wall -O0 -g    myint.cc   -o myint
+jovyan@jupyter-maza1508:~/Lab5-shelllab-maza1508/shelllab$ python shellAutograder.py 
+Running trace 01...
+        Passed.
+Running trace 02...
+        Passed.
+Running trace 03...
+        Passed.
+Running trace 04...
+        Passed.
+Running trace 05...
+        Passed.
+Running trace 06...
+        Passed.
+Running trace 07...
+        Passed.
+Running trace 08...
+        Passed.
+Running trace 09...
+        Passed.
+Running trace 10...
+        Passed.
+Running trace 11...
+        Passed.
+Running trace 12...
+        Passed.
+Running trace 13...
+        Passed.
+Running trace 14...
+        Passed.
+Running trace 15...
+        Passed.
+Running trace 16...
+        Passed.
+Total Passed: 16/16     Grade: 100%
+jovyan@jupyter-maza1508:~/Lab5-shelllab-maza1508/shelllab$ 

